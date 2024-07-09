@@ -1,4 +1,5 @@
 import cmd
+import os
 
 from openai import OpenAI
 from src.variables import API_KEY, PROJECT_ID
@@ -7,7 +8,8 @@ from src.types import Difficulty, Focus
 from src.chat import Tutor
 
 client = OpenAI(api_key=API_KEY, project=PROJECT_ID)
-tutor = Tutor(client, Config(language='Italian'))
+tutor = Tutor(client, Config(language="Italian"))
+
 
 def test(line: str):
     stream = client.chat.completions.create(
@@ -18,6 +20,7 @@ def test(line: str):
         if chunk.choices[0].delta.content is not None:
             print(chunk.choices[0].delta.content, end="")
     print("\n")
+
 
 class PyDuoCLI(cmd.Cmd):
     intro = r"""
@@ -36,7 +39,15 @@ class PyDuoCLI(cmd.Cmd):
                                    ---- \___|
 
 
-                                Welcome to pyDuo! type help or ? to list commands.         
+                Welcome to pyDuo! type help or ? to list commands.
+
+                                Quickstart
+
+                Use the command begin to activate the agent
+
+                lang [language] changes the language of the current session 
+                focus [focus] changes the focus 
+                level [level] alters the difficulty level of the questions        
     """
     prompt = "(pyDuo) "
 
@@ -44,7 +55,7 @@ class PyDuoCLI(cmd.Cmd):
         super().__init__()
         self.config = config
         self.tutor = Tutor(client, self.config)
-    
+
     def do_config(self, line: str) -> None:
         """View the config for the current session"""
         print(self.config)
@@ -71,14 +82,17 @@ class PyDuoCLI(cmd.Cmd):
             self.tutor.start_stream()
         else:
             print(f"Invalid Option: Choices are {Focus.__members__}")
-    
+
+    def do_audio(self, line: str) -> None:
+        self.tutor.generate_audio()
+
     def do_exit(self, line: str) -> bool:
         """Exits shell environment"""
         print("goodbye!")
         return True
-    
-    def do_begin(self, line:str) -> None:
-        print(f'{self.tutor.config.language}')
+
+    def do_begin(self, line: str) -> None:
+        print(f"{self.tutor.config.language}")
         self.tutor.start_stream()
 
     def default(self, line: str) -> None:
@@ -92,9 +106,11 @@ class PyDuoCLI(cmd.Cmd):
                 [split_line[0]] + [l.upper() for i, l in enumerate(split_line) if i > 0]
             )
         return line
-    
+
+
 def shell():
-    PyDuoCLI(config=Config(language='Italian')).cmdloop()
+    PyDuoCLI(config=Config(language="Italian")).cmdloop()
+
 
 if __name__ == "__main__":
     shell()
