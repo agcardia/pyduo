@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import os
 
 from pydub import AudioSegment
@@ -10,12 +10,17 @@ from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 from src.config import Config
 
 
-@dataclass
+@dataclass(repr=True)
 class Tutor:
     client: OpenAI
-    config: Config
+    config: Config 
     model: str = "gpt-3.5-turbo"
     stream: bool = False
+    audio_path: str = os.path.join(os.getcwd(),'audio')
+
+    def __post_init__(self):
+        if not os.path.exists(self.audio_path):
+            os.mkdir(self.audio_path)
 
     def start_stream(self):
         assert self.model is not None
@@ -30,10 +35,12 @@ class Tutor:
         )
         self.read_stream(stream)
 
+
     def read_stream(self, stream: Stream[ChatCompletionChunk]) -> None:
         for chunk in stream:
             if chunk.choices[0].delta.content is not None:
                 print(chunk.choices[0].delta.content, end="")
+        print("\n")
 
     def read_answer(self, line: str) -> None:
         assert self.model is not None
@@ -89,10 +96,7 @@ class Tutor:
         self.audio_answer = response
 
     def make_mp3(self, line: str):
-        # TODO better way to make paths
-        if not os.path.exists(os.path.join(os.getcwd(), "audio")):
-            os.mkdir(os.path.join(os.getcwd(), "audio"))
-        speech_file_path = os.path.join(os.getcwd(), "Audio/speech.mp3")
+        speech_file_path = os.path.join(self.audio_path,"speech.mp3")
         with self.client.audio.speech.with_streaming_response.create(
             model="tts-1",
             voice="onyx",

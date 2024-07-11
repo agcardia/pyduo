@@ -30,12 +30,10 @@ class Config:
                                 If {self.focus} is CONVERSATION, you will begin a dialogue with the current user, simulating a real life conversation
                             """
         self.system_message = {"role": "system", "content": system_message}
-    
+
     def generate_audio_response_settings(self, answer_key: str):
         system_message = f"""You are a tutor advising a student in the {self.language} language. 
                                 They were given an mp3 file of sentences to translate from {self.language} into English.
                                 Upon recieving their response, you will critique their answers based on the given answer key {answer_key}
                             """
         self.system_message = {"role": "system", "content": system_message}
-    
-
