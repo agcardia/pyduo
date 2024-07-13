@@ -13,10 +13,10 @@ from src.config import Config
 @dataclass(repr=True)
 class Tutor:
     client: OpenAI
-    config: Config 
+    config: Config
     model: str = "gpt-3.5-turbo"
     stream: bool = False
-    audio_path: str = os.path.join(os.getcwd(),'audio')
+    audio_path: str = os.path.join(os.getcwd(), "audio")
 
     def __post_init__(self):
         if not os.path.exists(self.audio_path):
@@ -34,7 +34,6 @@ class Tutor:
             stream=True,
         )
         self.read_stream(stream)
-
 
     def read_stream(self, stream: Stream[ChatCompletionChunk]) -> None:
         for chunk in stream:
@@ -59,7 +58,7 @@ class Tutor:
             stream=True,
         )
         self.read_stream(stream)
-    
+
     def read_audio_answer(self, line: str, answer_key: str):
         self.config.generate_audio_response_settings(answer_key)
         stream: Stream[ChatCompletionChunk] = self.client.chat.completions.create(
@@ -71,6 +70,24 @@ class Tutor:
             stream=True,
         )
         self.read_stream(stream)
+    
+    def respond_to_conversation(self, response:str):
+        assert self.model is not None
+        self.config.generate_conversation_settings()
+        completion: ChatCompletion = self.client.chat.completions.create(
+            messages=[
+                self.config.system_message,
+                {
+                    "role": "user",
+                    "content": response,
+                },
+            ],
+            model=self.model,
+            temperature=0.3,
+            stream=False,
+        )
+        response = completion.choices[0].message.content
+        self.make_mp3(response)
 
 
     def generate_audio(self):
@@ -96,7 +113,7 @@ class Tutor:
         self.audio_answer = response
 
     def make_mp3(self, line: str):
-        speech_file_path = os.path.join(self.audio_path,"speech.mp3")
+        speech_file_path = os.path.join(self.audio_path, "speech.mp3")
         with self.client.audio.speech.with_streaming_response.create(
             model="tts-1",
             voice="onyx",

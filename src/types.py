@@ -1,4 +1,5 @@
 from enum import Enum
+from io import BytesIO
 
 
 class Difficulty(Enum):
@@ -12,3 +13,9 @@ class Focus(Enum):
     VERBS = "VERBS"
     NOUNS = "NOUNS"
     CONVERSATION = "CONVERSATION"
+
+
+class NamedBytesIO(BytesIO):
+    def __init__(self, buffer: BytesIO, name: str):
+        super().__init__(buffer.getvalue())
+        self.name = name

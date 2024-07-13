@@ -1,12 +1,16 @@
 import cmd
+import os
+import sys
 
 from enum import Enum
 
 from openai import OpenAI
+
 from src.variables import API_KEY, PROJECT_ID
+from src.audio_controller import AudioController
+from src.chat import Tutor
 from src.config import Config
 from src.types import Difficulty, Focus
-from src.chat import Tutor
 
 
 class PyDuoCLI(cmd.Cmd):
@@ -42,13 +46,16 @@ class PyDuoCLI(cmd.Cmd):
         super().__init__()
         self.config = config
         self.tutor = Tutor(client, self.config)
-    
-    def config_change(self, *, setting_enum: Enum | None, setting_attr: str, line: str) -> None:
+        self.controller = AudioController(client)
+
+    def config_change(
+        self, *, setting_enum: Enum | None, setting_attr: str, line: str
+    ) -> None:
         """Abstract function for implementing config changes in our CLI"""
 
         if isinstance(setting_enum, Enum) and line not in setting_enum.__members__:
             print(f"Invalid Option: Choices are {setting_enum.__members__}")
-            return 
+            return
 
         setattr(self.config, setting_attr, line)
         print(f"...resetting wth new {setting_attr} of {line}...")
@@ -60,19 +67,35 @@ class PyDuoCLI(cmd.Cmd):
 
     def do_lang(self, line: str) -> None:
         """Sets the current language for the active session"""
-        self.config_change(setting_enum=None, setting_attr='language', line=line)
+        self.config_change(setting_enum=None, setting_attr="language", line=line)
 
     def do_level(self, line: str) -> None:
         """Sets the current difficulty for the active session (EASY,MEDIUM,HARD)"""
-        self.config_change(setting_enum=Difficulty, setting_attr='difficulty', line=line)
+        self.config_change(
+            setting_enum=Difficulty, setting_attr="difficulty", line=line
+        )
 
     def do_focus(self, line: str) -> None:
-        self.config_change(setting_enum=Focus, setting_attr='focus', line=line)
+        self.config_change(setting_enum=Focus, setting_attr="focus", line=line)
+
+    def do_help(self, arg: str) -> bool | None:
+        return super().do_help(arg)
 
     def do_audio(self, line: str) -> None:
         self.tutor.generate_audio()
-    
-    def do_restart(self, line:str) -> None:
+
+    def do_simulate(self, line: str) -> None:
+        self.config_change(setting_enum=Focus, setting_attr="focus", line='conversation')
+        #get user response
+        while True:
+            print('recording audio.. restarting loop')
+            buffer = self.controller.record_audio()
+            response = self.controller.transcribe_audio(buffer)
+            print(f'Done recording: parsed response of {response}')
+            #get ai response
+            self.tutor.respond_to_conversation(response)
+
+    def do_restart(self, line: str) -> None:
         self.tutor.start_stream()
 
     def do_exit(self, line: str) -> bool:
@@ -98,6 +121,8 @@ class PyDuoCLI(cmd.Cmd):
 
 
 def shell():
+    if os.geteuid() != 0:
+        os.execvp('sudo', ['sudo', 'python3'] + sys.argv)
     client = OpenAI(api_key=API_KEY, project=PROJECT_ID)
     PyDuoCLI(config=Config(language="Italian"), client=client).cmdloop()
 
