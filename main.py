@@ -1,5 +1,6 @@
 import cmd
 import os
+import logging
 import sys
 
 from enum import Enum
@@ -11,6 +12,17 @@ from src.audio_controller import AudioController
 from src.chat import Tutor
 from src.config import Config
 from src.types import Difficulty, Focus
+
+from dataclasses import asdict
+from tabulate import tabulate
+
+
+def tabulate_config(config: Config):
+    config_dict = asdict(config)
+    tabulate_data = []
+    for k, v in config_dict.items():
+        tabulate_data.append([k, v])
+    return tabulate(tabular_data=tabulate_data, tablefmt="outline")
 
 
 class PyDuoCLI(cmd.Cmd):
@@ -42,11 +54,12 @@ class PyDuoCLI(cmd.Cmd):
     """
     prompt = "(pyDuo) "
 
-    def __init__(self, config: Config, client: OpenAI):
+    def __init__(self, config: Config, client: OpenAI, logger: logging.Logger):
         super().__init__()
         self.config = config
         self.tutor = Tutor(client, self.config)
         self.controller = AudioController(client)
+        self.logger = logger
 
     def config_change(
         self, *, setting_enum: Enum | None, setting_attr: str, line: str
@@ -58,12 +71,12 @@ class PyDuoCLI(cmd.Cmd):
             return
 
         setattr(self.config, setting_attr, line)
-        print(f"...resetting wth new {setting_attr} of {line}...")
+        self.logger.info(f"...resetting wth new {setting_attr} of {line}...")
         self.tutor.config.generate_settings()
 
     def do_config(self, line: str) -> None:
         """View the config for the current session"""
-        print(self.config)
+        print(tabulate_config(self.config))
 
     def do_lang(self, line: str) -> None:
         """Sets the current language for the active session"""
@@ -85,14 +98,16 @@ class PyDuoCLI(cmd.Cmd):
         self.tutor.generate_audio()
 
     def do_simulate(self, line: str) -> None:
-        self.config_change(setting_enum=Focus, setting_attr="focus", line='conversation')
-        #get user response
+        self.config_change(
+            setting_enum=Focus, setting_attr="focus", line="conversation"
+        )
+        # get user response
         while True:
-            print('recording audio.. restarting loop')
+            self.logger.info("recording audio.. restarting loop")
             buffer = self.controller.record_audio()
             response = self.controller.transcribe_audio(buffer)
-            print(f'Done recording: parsed response of {response}')
-            #get ai response
+            self.logger.info(f"Done recording: parsed response of {response}")
+            # get ai response
             self.tutor.respond_to_conversation(response)
 
     def do_restart(self, line: str) -> None:
@@ -122,9 +137,13 @@ class PyDuoCLI(cmd.Cmd):
 
 def shell():
     if os.geteuid() != 0:
-        os.execvp('sudo', ['sudo', 'python3'] + sys.argv)
+        os.execvp("sudo", ["sudo", "python3"] + sys.argv)
     client = OpenAI(api_key=API_KEY, project=PROJECT_ID)
-    PyDuoCLI(config=Config(language="Italian"), client=client).cmdloop()
+    PyDuoCLI(
+        config=Config(language="Italian"),
+        client=client,
+        logger=logging.getLogger(__name__),
+    ).cmdloop()
 
 
 if __name__ == "__main__":

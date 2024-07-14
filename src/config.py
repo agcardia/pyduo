@@ -42,7 +42,7 @@ class Config:
                                 Upon recieving their response, you will critique their answers based on the given answer key {answer_key}
                             """
         self.system_message = {"role": "system", "content": system_message}
-    
+
     def generate_conversation_settings(self):
         system_message = f"""You are a tutor advising a student in the {self.language} language. 
                                You are simulating a real life conversation with a student in {self.language}. You will respond as if you 

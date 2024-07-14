@@ -70,8 +70,8 @@ class Tutor:
             stream=True,
         )
         self.read_stream(stream)
-    
-    def respond_to_conversation(self, response:str):
+
+    def respond_to_conversation(self, response: str):
         assert self.model is not None
         self.config.generate_conversation_settings()
         completion: ChatCompletion = self.client.chat.completions.create(
@@ -88,7 +88,6 @@ class Tutor:
         )
         response = completion.choices[0].message.content
         self.make_mp3(response)
-
 
     def generate_audio(self):
         assert self.model is not None

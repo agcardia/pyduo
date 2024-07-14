@@ -1,5 +1,7 @@
 from io import BytesIO
 from dataclasses import dataclass
+
+import logging
 import wave
 
 from openai import OpenAI
@@ -15,6 +17,8 @@ from src.types import NamedBytesIO
 import keyboard
 import pyaudio
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class AudioController:
@@ -29,12 +33,12 @@ class AudioController:
         buffer = BytesIO()
         p = pyaudio.PyAudio()
         stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True)
-        print("Recording... press the spacebar when you are done")
+        logger.info("Recording... press the spacebar when you are done")
         while True and self.is_recording:
             buffer.write(stream.read(CHUNK))
         stream.close()
         p.terminate()
-        setattr(self, "is_recording",True)
+        setattr(self, "is_recording", True)
         return buffer
 
     def create_wav_buffer(self, audio_buffer: BytesIO):
